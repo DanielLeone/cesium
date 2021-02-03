@@ -279,10 +279,7 @@ HeightmapTerrainData.prototype.createMesh = function (options) {
   }
 
   var that = this;
-  var start = window.performance.now();
   return when(verticesPromise, function (result) {
-    var end = window.performance.now();
-    // console.log(`receive mesh: ${(end - start).toPrecision(6)}ms`);
     var indicesAndEdges;
     if (that._skirtHeight > 0.0) {
       indicesAndEdges = TerrainProvider.getRegularGridAndSkirtIndicesAndEdgeIndices(
@@ -332,7 +329,7 @@ HeightmapTerrainData.prototype.createMesh = function (options) {
     );
 
     // Free memory received from server after mesh is created.
-    that._mesh._buffer = undefined;
+    that._buffer = undefined;
     return that._mesh;
   });
 };

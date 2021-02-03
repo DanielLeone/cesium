@@ -15,6 +15,56 @@ import TerrainEncoding from "./TerrainEncoding.js";
 import Transforms from "./Transforms.js";
 import TrianglePicking from "../Core/TrianglePicking.js";
 import WebMercatorProjection from "./WebMercatorProjection.js";
+import when from "../ThirdParty/when.js";
+
+import init, {
+  create_octree,
+} from "../rust-wasm-octree/pkg/rust_wasm_octree.js";
+
+var createOctree = null;
+
+function run() {
+  if (createOctree) {
+    return createOctree;
+  }
+  // First up we need to actually load the wasm file, so we use the
+  // default export to inform it where the wasm file is located on the
+  // server, and then we wait on the returned promise to wait for the
+  // wasm to be loaded.
+  //
+  // It may look like this: `await init('./pkg/without_a_bundler_bg.wasm');`,
+  // but there is also a handy default inside `init` function, which uses
+  // `import.meta` to locate the wasm file relatively to js file.
+  //
+  // Note that instead of a string you can also pass in any of the
+  // following things:
+  //
+  // * `WebAssembly.Module`
+  //
+  // * `ArrayBuffer`
+  //
+  // * `Response`
+  //
+  // * `Promise` which returns any of the above, e.g. `fetch("./path/to/wasm")`
+  //
+  // This gives you complete control over how the module is loaded
+  // and compiled.
+  //
+  // Also note that the promise, when resolved, yields the wasm module's
+  // exports which is the same as importing the `*_bg` module in other
+  // modes
+  when(
+    init(
+      "http://localhost:8080/Source/rust-wasm-octree/pkg/rust_wasm_octree_bg.wasm"
+    )
+  ).then(function () {
+    var result = create_octree(new Float64Array([1, 2, 3, 4]));
+    console.log(result);
+    createOctree = create_octree;
+  });
+}
+
+run();
 
 /**
  * Contains functions to create a mesh from a heightmap image.
@@ -242,6 +292,13 @@ HeightmapTessellator.computeVertices = function (options) {
   // so it employs a lot of inlining and unrolling as an optimization.
   // In particular, the functionality of Ellipsoid.cartographicToCartesian
   // is inlined.
+
+  if (createOctree) {
+    var result = createOctree(new Float64Array([1, 2, 3, 4]));
+    console.log("heck yea", result);
+  } else {
+    console.warn("wasm not ready yet!");
+  }
 
   console.time("creating octree");
   console.time("setup stuff");
@@ -601,20 +658,35 @@ HeightmapTessellator.computeVertices = function (options) {
     );
     console.timeEnd("making triangles");
 
-    // console.time("making packed triangles");
-    //
-    // var packedTriangles = createPackedTriangles(
-    //   positions,
-    //   invTransform,
-    //   width,
-    //   gridTriangleCount
-    // );
-    // console.timeEnd("making packed triangles");
-
-    packedOctree = TrianglePicking.createPackedOctree(
-      triangles,
-      inverseTransform
+    console.time("making packed triangles");
+    var packedTriangles = createPackedTriangles(
+      positions,
+      inverseTransform,
+      width,
+      gridTriangleCount
     );
+    console.timeEnd("making packed triangles");
+
+    if (createOctree) {
+      var doublePackedOctree = create_octree(packedTriangles);
+      var doublePackedOctreeArray = Int32Array.from(doublePackedOctree);
+      // the first two integers in the array are the indicies for the various sections
+      var packedNodeSize = doublePackedOctreeArray[0];
+      var packedTriangleSize = doublePackedOctreeArray[1];
+      packedOctree = {
+        packedNodes: doublePackedOctreeArray.slice(2, packedNodeSize),
+        packedTriangles: doublePackedOctreeArray.slice(
+          packedNodeSize + 1,
+          packedTriangleSize
+        ),
+        inverseTransform: doublePackedOctreeArray.slice(packedTriangleSize + 1),
+      };
+    } else {
+      packedOctree = TrianglePicking.createPackedOctree(
+        triangles,
+        inverseTransform
+      );
+    }
   }
 
   var occludeePointInScaledSpace;
