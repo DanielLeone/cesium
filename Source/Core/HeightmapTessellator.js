@@ -57,8 +57,10 @@ function run() {
     init(
       "http://localhost:8080/Source/rust-wasm-octree/pkg/rust_wasm_octree_bg.wasm"
     )
-  ).then(function () {
-    var result = create_octree(new Float64Array([1, 2, 3, 4]));
+  ).then(function (instance) {
+    var buffer = new Float32Array(10000);
+    buffer[0] = 1.2345;
+    var result = create_octree(buffer);
     console.log(result);
     createOctree = create_octree;
   });
@@ -668,25 +670,29 @@ HeightmapTessellator.computeVertices = function (options) {
     console.timeEnd("making packed triangles");
 
     if (createOctree) {
+      console.time("we sending");
       var doublePackedOctree = create_octree(packedTriangles);
-      var doublePackedOctreeArray = Int32Array.from(doublePackedOctree);
-      // the first two integers in the array are the indicies for the various sections
-      var packedNodeSize = doublePackedOctreeArray[0];
-      var packedTriangleSize = doublePackedOctreeArray[1];
-      packedOctree = {
-        packedNodes: doublePackedOctreeArray.slice(2, packedNodeSize),
-        packedTriangles: doublePackedOctreeArray.slice(
-          packedNodeSize + 1,
-          packedTriangleSize
-        ),
-        inverseTransform: doublePackedOctreeArray.slice(packedTriangleSize + 1),
-      };
-    } else {
-      packedOctree = TrianglePicking.createPackedOctree(
-        triangles,
-        inverseTransform
-      );
+      console.timeEnd("we sending");
+
+      console.log(packedTriangles, doublePackedOctree);
+      // var doublePackedOctreeArray = Int32Array.from(doublePackedOctree);
+      // // the first two integers in the array are the indicies for the various sections
+      // var packedNodeSize = doublePackedOctreeArray[0];
+      // var packedTriangleSize = doublePackedOctreeArray[1];
+      // packedOctree = {
+      //   packedNodes: doublePackedOctreeArray.slice(2, packedNodeSize),
+      //   packedTriangles: doublePackedOctreeArray.slice(
+      //     packedNodeSize + 1,
+      //     packedTriangleSize
+      //   ),
+      //   inverseTransform: doublePackedOctreeArray.slice(packedTriangleSize + 1),
+      // };
     }
+
+    packedOctree = TrianglePicking.createPackedOctree(
+      triangles,
+      inverseTransform
+    );
   }
 
   var occludeePointInScaledSpace;
