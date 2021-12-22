@@ -639,7 +639,7 @@ function requestAvailability(that, level, x, y) {
 
   var request = new Request({
     throttle: false,
-    throttleByServer: true,
+    throttleByServer: false,
     type: RequestType.TERRAIN,
   });
 

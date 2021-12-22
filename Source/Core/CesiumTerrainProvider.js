@@ -1288,7 +1288,7 @@ function checkLayer(provider, x, y, level, layer, topLayer) {
           //  may never get loaded, so request it here.
           var request = new Request({
             throttle: false,
-            throttleByServer: true,
+            throttleByServer: false,
             type: RequestType.TERRAIN,
           });
           requestPromise = requestTileGeometry(

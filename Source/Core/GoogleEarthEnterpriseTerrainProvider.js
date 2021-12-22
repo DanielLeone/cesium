@@ -605,7 +605,7 @@ GoogleEarthEnterpriseTerrainProvider.prototype.getTileDataAvailable = function (
     // We will need this tile, so request metadata and return false for now
     var request = new Request({
       throttle: false,
-      throttleByServer: true,
+      throttleByServer: false,
       type: RequestType.TERRAIN,
     });
     metadata.populateSubtree(x, y, level, request);
